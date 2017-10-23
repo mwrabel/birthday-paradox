@@ -1,3 +1,18 @@
+---
+title: "Birthday Paradox in R"
+author: "Michał Wrąbel"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+Did you know that it takes only 24 people to be over 50% sure that there's a lucky pair who share the same day of birth? That's what birthday paradox is all about. The more counterintuitive it feels, the more astounding is the fact that actually it is easily provable.
+
+Here I'd like to show you, my Dearest Reader, R implementation of birthday paradox. Enjoy!
+
+## Step 1: Prepare R environment
+```{r}
 # clean R workspace beforehand
 rm(list = ls())
 
@@ -5,7 +20,15 @@ rm(list = ls())
 library(ggplot2)
 library(reshape2)
 library(Rmisc)
+```
 
+For the sake of simplicity, I'll introduce assumption that each year consists of 365 days. Secondly, I could safely assume that distribution of birthdays across all days is uniform (that's not true, but very close to true).
+
+In fact those assumptions won't heavily influence final results. In additional read there's an article in which author lifts those two assumptions - I recommend it wholeheartedly for further read on the topic!
+
+
+## Step 2: Create dataframe
+```{r}
 # create empty dataframe
 yr_days <- 365
 df <- data.frame(people = rep(0, yr_days), expected_prob = rep(0, yr_days))
@@ -21,7 +44,10 @@ for(people in 1:yr_days) {
 
 # first few probabilities (starting from 1 person in a room with probability equal 0.00)
 head(df)
+```
 
+## Step 3: Visualize!
+```{r}
 # visualisation
 ggplot(df[1:60, ], aes(x = people, y = expected_prob)) +
   geom_line() +
@@ -39,7 +65,17 @@ ggplot(df[10:40, ], aes(x = people, y = expected_prob)) +
             hjust = 0.8) +
   labs(title = "theoretical probability - zoomed", x = "people") +
   theme_minimal()
+```
 
+Paradox decomposed does not seem so paradoxical, doesn't it?
+
+However, what would have become of statistics if it were lacking confidence intervals? I would not dare to answer this question hence I decided to include also a tiny simulation. 
+
+Is the paradox visible only in 'means' and 'aggregated estimations'? Or maybe it is observable roughly every time with similar probabilities? The simulation will help in finding an answer.
+
+
+## Step 4: Simulation
+```{r}
 # simple simulation
 p <- data.frame()
 i_max <- 1000
@@ -56,7 +92,10 @@ for (j in 1:j_max) {
   
 }
 sapply(p, mean)
+```
+So far so good. Simulated means are very similar to theoretical values. But what about forementioned confidence intervals?
 
+```{r}
 # simulation - summary
 colnames(p) <- 1:60
 ci = 0.999
@@ -76,9 +115,11 @@ ggplot(p_summary, aes(x = variable, y = value)) +
   geom_line(group = 1) +
   labs(title = paste0("empirical probability with ", sprintf("%1.1f%%", ci * 100), " confidence intervals"), x = "people") +
   theme_minimal()
+```
 
+The interpretation in straightforward. For example, in case of 12 people in the same room, there is 17.3% (+/- 3.9%) chance that there is a lucky pair of people sharing the same day of birth. That's pretty stable, even for a paradox.
 
-
-# http://www.panix.com/~murphy/bday.html
-# https://betterexplained.com/articles/understanding-the-birthday-paradox/
-# http://blog.revolutionanalytics.com/2012/06/simulating-the-birthday-problem-with-data-derived-probabilities.html
+## Additional resources
++ http://www.panix.com/~murphy/bday.html
++ https://betterexplained.com/articles/understanding-the-birthday-paradox/
++ http://blog.revolutionanalytics.com/2012/06/simulating-the-birthday-problem-with-data-derived-probabilities.html
