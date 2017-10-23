@@ -1,11 +1,12 @@
 ---
 title: "Birthday Paradox in R"
 author: "Michał Wrąbel"
-output:
-  html_document:
-    df_print: paged
+output: github_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 Did you know that it takes only 24 people to be over 50% sure that there's a lucky pair who share the same day of birth? That's what birthday paradox is all about. The more counterintuitive it feels, the more astounding is the fact that actually it is easily provable.
 
