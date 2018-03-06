@@ -60,105 +60,123 @@ Step 3: Visualize!
 ------------------
 
 ``` r
-# visualisation
+# Theoretical probability of an event of having two people in the same room sharing same date of birth
 ggplot(df[1:60, ], aes(x = people, y = expected_prob)) +
-  geom_line() +
-  geom_text(aes(label = sprintf("%1.0f%%", expected_prob*100)),
-            vjust = -0.4,
-            hjust = 0) +
-  labs(title = "theoretical probability", x = "people") +
+  geom_line(size = 1, colour = "#235372") +
+  #geom_text(aes(label = sprintf("%1.0f%%", expected_prob*100)),
+  #          vjust = -0.4,
+  #          hjust = 0) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "theoretical probability of an event", x = "people") +
   theme_minimal()
 ```
 
-![](birthday-paradox_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-3-1.png)
+![](birthday-paradox_files/figure-markdown_github/unnamed-chunk-3-1.png)
 
-``` r
-# zoomed version of plot above
-ggplot(df[10:40, ], aes(x = people, y = expected_prob)) +
-  geom_line() +
-  geom_text(aes(label = sprintf("%1.0f%%", expected_prob*100)),
-            vjust = -0.2,
-            hjust = 0.8) +
-  labs(title = "theoretical probability - zoomed", x = "people") +
-  theme_minimal()
-```
+After decomposing the paradox, it does not seem that counter-intuitive, doesn't it?
 
-![](birthday-paradox_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-3-2.png)
+However, what would have become of statistics if it were lacking confidence intervals? I would not dare not to answer this question hence I include also a small simulation.
 
-Paradox decomposed does not seem so paradoxical, doesn't it?
-
-However, what would have become of statistics if it were lacking confidence intervals? I would not dare to answer this question hence I decided to include also a tiny simulation.
-
-Is the paradox visible only in 'means' and 'aggregated estimations'? Or maybe it is observable roughly every time with similar probabilities? The simulation will help in finding an answer.
+Is the paradox visible only in 'means' and 'aggregated estimations'? Or maybe it is observable roughly every time with similar probabilities? The simulation will help find the correct answer.
 
 Step 4: Simulation
 ------------------
 
 ``` r
-# simple simulation
-p <- data.frame()
-i_max <- 1000
-j_max <- 60
+# simple simulation function definitions
+birthday_paradox_simulation <- function(iterations, people_max) {
+  p <- data.frame()
 
-for (j in 1:j_max) {
-  
-  for (i in 1:i_max) {
-    
-    v <- floor(runif(j, min = 1, max = yr_days + 1))
-    p[i, j] <- ifelse(length(v) - length(unique(v)) > 0, 1, 0)
-    
-  }
-  
-}
+  # for people_max... (to speed up the computations)
+  for (j in 1:people_max) {
+    # ...make many iterations 
+    for (i in 1:iterations) {
+      v <- floor(runif(j, min = 1, max = yr_days + 1))
+      p[i, j] <- ifelse(length(v) - length(unique(v)) > 0, 1, 0)
+      }
+    }
 sapply(p, mean)
+
+return(p)
+}
+
+p <- birthday_paradox_simulation(iterations = 1000, people_max = 60)
 ```
 
-    ##    V1    V2    V3    V4    V5    V6    V7    V8    V9   V10   V11   V12 
-    ## 0.000 0.006 0.006 0.012 0.031 0.026 0.053 0.080 0.116 0.104 0.119 0.183 
-    ##   V13   V14   V15   V16   V17   V18   V19   V20   V21   V22   V23   V24 
-    ## 0.209 0.223 0.268 0.280 0.279 0.370 0.352 0.417 0.439 0.476 0.495 0.509 
-    ##   V25   V26   V27   V28   V29   V30   V31   V32   V33   V34   V35   V36 
-    ## 0.567 0.603 0.637 0.648 0.688 0.707 0.724 0.743 0.770 0.828 0.812 0.841 
-    ##   V37   V38   V39   V40   V41   V42   V43   V44   V45   V46   V47   V48 
-    ## 0.858 0.865 0.880 0.894 0.907 0.912 0.919 0.936 0.951 0.953 0.958 0.973 
-    ##   V49   V50   V51   V52   V53   V54   V55   V56   V57   V58   V59   V60 
-    ## 0.971 0.968 0.979 0.981 0.986 0.985 0.995 0.988 0.992 0.989 0.986 0.992
-
-So far so good. Simulated means are very similar to theoretical values. But what about forementioned confidence intervals?
+So far so good. Simulated means are very similar to theoretical values. But what about aforementioned confidence intervals?
 
 ``` r
 # simulation - summary
-colnames(p) <- 1:60
-ci = 0.999
-p_summary <- summarySE(melt(p), measurevar = "value", groupvars = c("variable"), conf.interval = ci)
+calculate_ci <- function(ci, people_max) {
+  
+  colnames(p) <- 1:people_max
+  p_summary <- summarySE(melt(p), measurevar = "value", groupvars = c("variable"), conf.interval = ci)
+  p_summary$variable <- as.numeric(p_summary$variable)
+  
+  return(p_summary)
+}
+
+p_summary <- calculate_ci(ci = 0.999, people_max = 60)
 ```
 
     ## No id variables; using all as measure variables
 
 ``` r
-ggplot(p_summary, aes(x = variable, y = value)) +
-  geom_line(group = 1) +
-  geom_text(aes(label = sprintf("%1.0f%%", value * 100)),
-            vjust = -0.2,
-            hjust = 0.8) +
-  labs(title = "empirical probability", x = "people") +
-  theme_minimal()
+confidence_plot <- function(df, ci) {
+  # Theoretical probability of an event of having two people in the same room sharing same date of birth with confidence intervals
+  plot <- ggplot(p_summary, aes(x = variable, y = value)) +
+    geom_crossbar(aes(ymin = value - ci, ymax = value + ci), width = 0.75, fatten = 2.5, colour = "#459ad1") +
+    geom_line(size = 1, colour = "#235372", group = 1) +
+    labs(title = paste0("empirical probability with ", sprintf("%1.1f%%", ci * 100), " confidence intervals"), x = "people", y = "expected_prob") +
+    scale_y_continuous(labels = scales::percent) +
+    theme_minimal()
+  
+  return(plot)
+}
+
+confidence_plot(df = p_summary, ci = 0.999)
 ```
 
-![](birthday-paradox_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-5-1.png)
+![](birthday-paradox_files/figure-markdown_github/unnamed-chunk-5-1.png)
+
+The interpretation is pretty straightforward. For example, in case of 12 people in the same room, there is 17.3% (+/- 3.9%) chance that there is a lucky pair of people sharing the same day of birth. That's pretty stable, even for a paradox. How would it looked after 50 iterations? And what to expect from 5000 repeats? Take a look:
 
 ``` r
-# zoomed version of plot above
-ggplot(p_summary, aes(x = variable, y = value)) +
-  geom_crossbar(aes(ymin = value - ci, ymax = value + ci), width = 0.75, fatten = 2.5) +
-  geom_line(group = 1) +
-  labs(title = paste0("empirical probability with ", sprintf("%1.1f%%", ci * 100), " confidence intervals"), x = "people") +
-  theme_minimal()
+# After 5000 iterations
+p <- birthday_paradox_simulation(iterations = 5000, people_max = 60)
+p_summary <- calculate_ci(ci = 0.999, people_max = 60)
 ```
 
-![](birthday-paradox_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-5-2.png)
+    ## No id variables; using all as measure variables
 
-The interpretation in straightforward. For example, in case of 12 people in the same room, there is 17.3% (+/- 3.9%) chance that there is a lucky pair of people sharing the same day of birth. That's pretty stable, even for a paradox.
+``` r
+confidence_plot(df = p_summary, ci = 0.999)
+```
+
+![](birthday-paradox_files/figure-markdown_github/unnamed-chunk-6-1.png)
+
+``` r
+# After 50 iterations
+p <- birthday_paradox_simulation(iterations = 50, people_max = 60)
+p_summary <- calculate_ci(ci = 0.999, people_max = 60)
+```
+
+    ## No id variables; using all as measure variables
+
+``` r
+confidence_plot(df = p_summary, ci = 0.999)
+```
+
+![](birthday-paradox_files/figure-markdown_github/unnamed-chunk-6-2.png)
+
+Increasing number of iteration should lead to even narrower confidence intervals and that's precisely what happens. However, with 50 iterations confidence intervals expand substantialy.There's 99.9% chance that in case of having 50 rooms filled with 20 people each, mean number of birthday matches will lie somewhere between 0.19 and 0.69 what is quite wide.
+
+With 10 rooms filled with 20 people each, we'd be 95% sure that the mean range would extend to 0.13-0.88.
+
+Conclusion?
+-----------
+
+Although with the power of R birthday paradox has been proved again, there is absolute no certainty that if we gathered about 20 friends in our room, there would be a birthday match indeed. Instead, there would be a mere probability of a that event. Also, there would be a pack of friends wondering where's the cake and schnapps. And who's in charge of that party?
 
 Additional resources
 --------------------
